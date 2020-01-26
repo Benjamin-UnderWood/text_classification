@@ -1,6 +1,0 @@
-theano
-pygpu
-pillow
-scikit-image
-h5py
-keras
