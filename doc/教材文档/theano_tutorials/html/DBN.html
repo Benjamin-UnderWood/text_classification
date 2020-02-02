@@ -1,0 +1,614 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Deep Belief Networks &mdash; DeepLearning 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="DeepLearning 0.1 documentation" href="contents.html" />
+    <link rel="next" title="Hybrid Monte-Carlo Sampling" href="hmc.html" />
+    <link rel="prev" title="Restricted Boltzmann Machines (RBM)" href="rbm.html" />
+ 
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-168290-9']);
+  _gaq.push(['_trackPageview']);
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="hmc.html" title="Hybrid Monte-Carlo Sampling"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="rbm.html" title="Restricted Boltzmann Machines (RBM)"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">DeepLearning 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="contents.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Deep Belief Networks</a><ul>
+<li><a class="reference internal" href="#id1">Deep Belief Networks</a></li>
+<li><a class="reference internal" href="#justifying-greedy-layer-wise-pre-training">Justifying Greedy-Layer Wise Pre-Training</a></li>
+<li><a class="reference internal" href="#implementation">Implementation</a></li>
+<li><a class="reference internal" href="#putting-it-all-together">Putting it all together</a></li>
+<li><a class="reference internal" href="#running-the-code">Running the Code</a></li>
+<li><a class="reference internal" href="#tips-and-tricks">Tips and Tricks</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="rbm.html"
+                        title="previous chapter">Restricted Boltzmann Machines (RBM)</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="hmc.html"
+                        title="next chapter">Hybrid Monte-Carlo Sampling</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/DBN.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="deep-belief-networks">
+<span id="dbn"></span><h1>Deep Belief Networks<a class="headerlink" href="#deep-belief-networks" title="Permalink to this headline">¶</a></h1>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This section assumes the reader has already read through <a class="reference internal" href="logreg.html"><em>Classifying MNIST digits using Logistic Regression</em></a>
+and <a class="reference internal" href="mlp.html"><em>Multilayer Perceptron</em></a> and <a class="reference internal" href="rbm.html"><em>Restricted Boltzmann Machines (RBM)</em></a>. Additionally it uses the following Theano
+functions and concepts: <a class="reference external" href="http://deeplearning.net/software/theano/tutorial/examples.html?highlight=tanh">T.tanh</a>, <a class="reference external" href="http://deeplearning.net/software/theano/tutorial/examples.html#using-shared-variables">shared variables</a>, <a class="reference external" href="http://deeplearning.net/software/theano/tutorial/adding.html#adding-two-scalars">basic arithmetic
+ops</a>, <a class="reference external" href="http://deeplearning.net/software/theano/tutorial/examples.html#computing-gradients">T.grad</a>, <a class="reference external" href="http://deeplearning.net/software/theano/tutorial/examples.html#using-random-numbers">Random numbers</a>, <a class="reference external" href="http://deeplearning.net/software/theano/library/config.html#config.floatX">floatX</a>. If you intend to run the
+code on GPU also read <a class="reference external" href="http://deeplearning.net/software/theano/tutorial/using_gpu.html">GPU</a>.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The code for this section is available for download <a class="reference external" href="http://deeplearning.net/tutorial/code/DBN.py">here</a>.</p>
+</div>
+<div class="section" id="id1">
+<h2>Deep Belief Networks<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p><a class="reference internal" href="references.html#hinton06" id="id2">[Hinton06]</a> showed that RBMs can be stacked and trained in a greedy manner
+to form so-called Deep Belief Networks (DBN). DBNs are graphical models which
+learn to extract a deep hierarchical representation of the training data.
+They model the joint distribution between observed vector <span class="math">x</span> and
+the <span class="math">\ell</span> hidden layers <span class="math">h^k</span> as follows:</p>
+<div class="math" id="equation-dbn">
+<p><span class="eqno">(1)</span><span class="math">P(x, h^1, \ldots, h^{\ell}) = \left(\prod_{k=0}^{\ell-2} P(h^k|h^{k+1})\right) P(h^{\ell-1},h^{\ell})</span></p>
+</div><p>where <span class="math">x=h^0</span>, <span class="math">P(h^{k-1} | h^k)</span> is a conditional distribution
+for the visible units conditioned on the hidden units of the RBM at level
+<span class="math">k</span>, and <span class="math">P(h^{\ell-1}, h^{\ell})</span> is the visible-hidden joint
+distribution in the top-level RBM. This is illustrated in the figure below.</p>
+<div class="figure align-center">
+<img alt="_images/DBN3.png" src="_images/DBN3.png" />
+</div>
+<p>The principle of greedy layer-wise unsupervised training can be applied to
+DBNs with RBMs as the building blocks for each layer <a class="reference internal" href="references.html#hinton06" id="id3">[Hinton06]</a>, <a class="reference internal" href="references.html#bengio07" id="id4">[Bengio07]</a>.
+The process is as follows:</p>
+<p>1. Train the first layer as an RBM that models the raw input <span class="math">x =
+h^{(0)}</span> as its visible layer.</p>
+<p>2. Use that first layer to obtain a representation of the input that will
+be used as data for the second layer. Two common solutions exist. This
+representation can be chosen as being the mean activations
+<span class="math">p(h^{(1)}=1|h^{(0)})</span> or samples of <span class="math">p(h^{(1)}|h^{(0)})</span>.</p>
+<p>3. Train the second layer as an RBM, taking the transformed data (samples or
+mean activations) as training examples (for the visible layer of that RBM).</p>
+<p>4. Iterate (2 and 3) for the desired number of layers, each time propagating
+upward either samples or mean values.</p>
+<p>5. Fine-tune all the parameters of this deep architecture with respect to a
+proxy for the DBN log- likelihood, or with respect to a supervised training
+criterion (after adding extra learning machinery to convert the learned
+representation into supervised predictions, e.g. a linear classifier).</p>
+<p>In this tutorial, we focus on fine-tuning via supervised gradient descent.
+Specifically, we use a logistic regression classifier to classify the input
+<span class="math">x</span> based on the output of the last hidden layer <span class="math">h^{(l)}</span> of the
+DBN. Fine-tuning is then performed via supervised gradient descent of the
+negative log-likelihood cost function. Since the supervised gradient is only
+non-null for the weights and hidden layer biases of each layer (i.e. null for
+the visible biases of each RBM), this procedure is equivalent to initializing
+the parameters of a deep MLP with the weights and hidden layer biases obtained
+with the unsupervised training strategy.</p>
+</div>
+<div class="section" id="justifying-greedy-layer-wise-pre-training">
+<h2>Justifying Greedy-Layer Wise Pre-Training<a class="headerlink" href="#justifying-greedy-layer-wise-pre-training" title="Permalink to this headline">¶</a></h2>
+<p>Why does such an algorithm work ? Taking as example a 2-layer DBN with hidden
+layers <span class="math">h^{(1)}</span> and <span class="math">h^{(2)}</span> (with respective weight parameters
+<span class="math">W^{(1)}</span> and <span class="math">W^{(2)}</span>), <a class="reference internal" href="references.html#hinton06" id="id5">[Hinton06]</a> established
+(see also Bengio09]_ for a detailed derivation) that <span class="math">\log
+p(x)</span> can be rewritten as,</p>
+<div class="math" id="equation-dbn_bound">
+<p><span class="eqno">(2)</span><span class="math">\log p(x) = &amp;KL(Q(h^{(1)}|x)||p(h^{(1)}|x)) + H_{Q(h^{(1)}|x)} + \\
+            &amp;\sum_h Q(h^{(1)}|x)(\log p(h^{(1)}) + \log p(x|h^{(1)})).</span></p>
+</div><p><span class="math">KL(Q(h^{(1)}|x) || p(h^{(1)}|x))</span> represents the KL divergence between
+the posterior <span class="math">Q(h^{(1)}|x)</span> of the first RBM if it were standalone, and the
+probability <span class="math">p(h^{(1)}|x)</span> for the same layer but defined by the entire DBN
+(i.e. taking into account the prior <span class="math">p(h^{(1)},h^{(2)})</span> defined by the
+top-level RBM). <span class="math">H_{Q(h^{(1)}|x)}</span> is the entropy of the distribution
+<span class="math">Q(h^{(1)}|x)</span>.</p>
+<p>It can be shown that if we initialize both hidden layers such that
+<span class="math">W^{(2)}={W^{(1)}}^T</span>, <span class="math">Q(h^{(1)}|x)=p(h^{(1)}|x)</span> and the KL
+divergence term is null. If we learn the first level RBM and then keep its
+parameters <span class="math">W^{(1)}</span> fixed, optimizing Eq. <a href="#equation-dbn_bound">(2)</a> with respect
+to <span class="math">W^{(2)}</span> can thus only increase the likelihood <span class="math">p(x)</span>.</p>
+<p>Also, notice that if we isolate the terms which depend only on <span class="math">W^{(2)}</span>, we
+get:</p>
+<div class="math">
+<p><span class="math">\sum_h Q(h^{(1)}|x)p(h^{(1)})</span></p>
+</div><p>Optimizing this with respect to <span class="math">W^{(2)}</span> amounts to training a second-stage
+RBM, using the output of <span class="math">Q(h^{(1)}|x)</span> as the training distribution,
+when <span class="math">x</span> is sampled from the training distribution for the first RBM.</p>
+</div>
+<div class="section" id="implementation">
+<h2>Implementation<a class="headerlink" href="#implementation" title="Permalink to this headline">¶</a></h2>
+<p>To implement DBNs in Theano, we will use the class defined in the <a class="reference internal" href="rbm.html"><em>Restricted Boltzmann Machines (RBM)</em></a>
+tutorial. One can also observe that the code for the DBN is very similar with the one
+for SdA, because both involve the principle of unsupervised layer-wise
+pre-training followed by supervised fine-tuning as a deep MLP.
+The main difference is that we use the RBM class instead of the dA
+class.</p>
+<p>We start off by defining the DBN class which will store the layers of the
+MLP, along with their associated RBMs. Since we take the viewpoint of using
+the RBMs to initialize an MLP, the code will reflect this by seperating as
+much as possible the RBMs used to initialize the network and the MLP used for
+classification.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">class</span> <span class="nc">DBN</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Deep Belief Network</span>
+
+<span class="sd">    A deep belief network is obtained by stacking several RBMs on top of each</span>
+<span class="sd">    other. The hidden layer of the RBM at layer `i` becomes the input of the</span>
+<span class="sd">    RBM at layer `i+1`. The first layer RBM gets as input the input of the</span>
+<span class="sd">    network, and the hidden layer of the last RBM represents the output. When</span>
+<span class="sd">    used for classification, the DBN is treated as a MLP, by adding a logistic</span>
+<span class="sd">    regression layer on top.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">numpy_rng</span><span class="p">,</span> <span class="n">theano_rng</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">n_ins</span><span class="o">=</span><span class="mi">784</span><span class="p">,</span>
+                 <span class="n">hidden_layers_sizes</span><span class="o">=</span><span class="p">[</span><span class="mi">500</span><span class="p">,</span> <span class="mi">500</span><span class="p">],</span> <span class="n">n_outs</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;This class is made to support a variable number of layers.</span>
+
+<span class="sd">        :type numpy_rng: numpy.random.RandomState</span>
+<span class="sd">        :param numpy_rng: numpy random number generator used to draw initial</span>
+<span class="sd">                    weights</span>
+
+<span class="sd">        :type theano_rng: theano.tensor.shared_randomstreams.RandomStreams</span>
+<span class="sd">        :param theano_rng: Theano random generator; if None is given one is</span>
+<span class="sd">                           generated based on a seed drawn from `rng`</span>
+
+<span class="sd">        :type n_ins: int</span>
+<span class="sd">        :param n_ins: dimension of the input to the DBN</span>
+
+<span class="sd">        :type hidden_layers_sizes: list of ints</span>
+<span class="sd">        :param hidden_layers_sizes: intermediate layers size, must contain</span>
+<span class="sd">                               at least one value</span>
+
+<span class="sd">        :type n_outs: int</span>
+<span class="sd">        :param n_outs: dimension of the output of the network</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sigmoid_layers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rbm_layers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">hidden_layers_sizes</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">theano_rng</span><span class="p">:</span>
+            <span class="n">theano_rng</span> <span class="o">=</span> <span class="n">MRG_RandomStreams</span><span class="p">(</span><span class="n">numpy_rng</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">2</span> <span class="o">**</span> <span class="mi">30</span><span class="p">))</span>
+
+        <span class="c"># allocate symbolic variables for the data</span>
+
+        <span class="c"># the data is presented as rasterized images</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">matrix</span><span class="p">(</span><span class="s">&#39;x&#39;</span><span class="p">)</span>
+
+        <span class="c"># the labels are presented as 1D vector of [int] labels</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">ivector</span><span class="p">(</span><span class="s">&#39;y&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal"><span class="pre">self.sigmoid_layers</span></code> will store the feed-forward graphs which together form
+the MLP, while <code class="docutils literal"><span class="pre">self.rbm_layers</span></code> will store the RBMs used to pretrain each
+layer of the MLP.</p>
+<p>Next step, we construct <code class="docutils literal"><span class="pre">n_layers</span></code> sigmoid layers (we use the
+<code class="docutils literal"><span class="pre">HiddenLayer</span></code> class introduced in <a class="reference internal" href="mlp.html#mlp"><span>Multilayer Perceptron</span></a>, with the only modification
+that we replaced the non-linearity from <code class="docutils literal"><span class="pre">tanh</span></code> to the logistic function
+<span class="math">s(x) = \frac{1}{1+e^{-x}}</span>) and <code class="docutils literal"><span class="pre">n_layers</span></code> RBMs, where <code class="docutils literal"><span class="pre">n_layers</span></code>
+is the depth of our model.  We link the sigmoid layers such that they form an
+MLP, and construct each RBM such that they share the weight matrix and the
+hidden bias with its corresponding sigmoid layer.</p>
+<div class="highlight-python"><div class="highlight"><pre>        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span><span class="p">):</span>
+            <span class="c"># construct the sigmoidal layer</span>
+
+            <span class="c"># the size of the input is either the number of hidden</span>
+            <span class="c"># units of the layer below or the input size if we are on</span>
+            <span class="c"># the first layer</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">input_size</span> <span class="o">=</span> <span class="n">n_ins</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">input_size</span> <span class="o">=</span> <span class="n">hidden_layers_sizes</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+
+            <span class="c"># the input to this layer is either the activation of the</span>
+            <span class="c"># hidden layer below or the input of the DBN if you are on</span>
+            <span class="c"># the first layer</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">layer_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">layer_input</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigmoid_layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">output</span>
+
+            <span class="n">sigmoid_layer</span> <span class="o">=</span> <span class="n">HiddenLayer</span><span class="p">(</span><span class="n">rng</span><span class="o">=</span><span class="n">numpy_rng</span><span class="p">,</span>
+                                        <span class="nb">input</span><span class="o">=</span><span class="n">layer_input</span><span class="p">,</span>
+                                        <span class="n">n_in</span><span class="o">=</span><span class="n">input_size</span><span class="p">,</span>
+                                        <span class="n">n_out</span><span class="o">=</span><span class="n">hidden_layers_sizes</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                                        <span class="n">activation</span><span class="o">=</span><span class="n">T</span><span class="o">.</span><span class="n">nnet</span><span class="o">.</span><span class="n">sigmoid</span><span class="p">)</span>
+
+            <span class="c"># add the layer to our list of layers</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sigmoid_layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sigmoid_layer</span><span class="p">)</span>
+
+            <span class="c"># its arguably a philosophical question...  but we are</span>
+            <span class="c"># going to only declare that the parameters of the</span>
+            <span class="c"># sigmoid_layers are parameters of the DBN. The visible</span>
+            <span class="c"># biases in the RBM are parameters of those RBMs, but not</span>
+            <span class="c"># of the DBN.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">sigmoid_layer</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+
+            <span class="c"># Construct an RBM that shared weights with this layer</span>
+            <span class="n">rbm_layer</span> <span class="o">=</span> <span class="n">RBM</span><span class="p">(</span><span class="n">numpy_rng</span><span class="o">=</span><span class="n">numpy_rng</span><span class="p">,</span>
+                            <span class="n">theano_rng</span><span class="o">=</span><span class="n">theano_rng</span><span class="p">,</span>
+                            <span class="nb">input</span><span class="o">=</span><span class="n">layer_input</span><span class="p">,</span>
+                            <span class="n">n_visible</span><span class="o">=</span><span class="n">input_size</span><span class="p">,</span>
+                            <span class="n">n_hidden</span><span class="o">=</span><span class="n">hidden_layers_sizes</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                            <span class="n">W</span><span class="o">=</span><span class="n">sigmoid_layer</span><span class="o">.</span><span class="n">W</span><span class="p">,</span>
+                            <span class="n">hbias</span><span class="o">=</span><span class="n">sigmoid_layer</span><span class="o">.</span><span class="n">b</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rbm_layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rbm_layer</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>All that is left is to stack one last logistic regression layer in order to
+form an MLP. We will use the <code class="docutils literal"><span class="pre">LogisticRegression</span></code> class introduced in
+<a class="reference internal" href="logreg.html#logreg"><span>Classifying MNIST digits using Logistic Regression</span></a>.</p>
+<div class="highlight-python"><div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">logLayer</span> <span class="o">=</span> <span class="n">LogisticRegression</span><span class="p">(</span>
+            <span class="nb">input</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sigmoid_layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">output</span><span class="p">,</span>
+            <span class="n">n_in</span><span class="o">=</span><span class="n">hidden_layers_sizes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
+            <span class="n">n_out</span><span class="o">=</span><span class="n">n_outs</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logLayer</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c"># compute the cost for second phase of training, defined as the</span>
+        <span class="c"># negative log likelihood of the logistic regression (output) layer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">finetune_cost</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">logLayer</span><span class="o">.</span><span class="n">negative_log_likelihood</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+
+        <span class="c"># compute the gradients with respect to the model parameters</span>
+        <span class="c"># symbolic variable that points to the number of errors made on the</span>
+        <span class="c"># minibatch given by self.x and self.y</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">errors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">logLayer</span><span class="o">.</span><span class="n">errors</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The class also provides a method which generates training functions for each
+of the RBMs. They are returned as a list, where element <span class="math">i</span> is a
+function which implements one step of training for the <code class="docutils literal"><span class="pre">RBM</span></code> at layer
+<span class="math">i</span>.</p>
+<div class="highlight-python"><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">pretraining_functions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">train_set_x</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Generates a list of functions, for performing one step of</span>
+<span class="sd">        gradient descent at a given layer. The function will require</span>
+<span class="sd">        as input the minibatch index, and to train an RBM you just</span>
+<span class="sd">        need to iterate, calling the corresponding function on all</span>
+<span class="sd">        minibatch indexes.</span>
+
+<span class="sd">        :type train_set_x: theano.tensor.TensorType</span>
+<span class="sd">        :param train_set_x: Shared var. that contains all datapoints used</span>
+<span class="sd">                            for training the RBM</span>
+<span class="sd">        :type batch_size: int</span>
+<span class="sd">        :param batch_size: size of a [mini]batch</span>
+<span class="sd">        :param k: number of Gibbs steps to do in CD-k / PCD-k</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="c"># index to a [mini]batch</span>
+        <span class="n">index</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">lscalar</span><span class="p">(</span><span class="s">&#39;index&#39;</span><span class="p">)</span>  <span class="c"># index to a minibatch</span>
+</pre></div>
+</div>
+<p>In order to be able to change the learning rate during training, we associate a
+Theano variable to it that has a default value.</p>
+<div class="highlight-python"><div class="highlight"><pre>        <span class="n">learning_rate</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s">&#39;lr&#39;</span><span class="p">)</span>  <span class="c"># learning rate to use</span>
+
+        <span class="c"># begining of a batch, given `index`</span>
+        <span class="n">batch_begin</span> <span class="o">=</span> <span class="n">index</span> <span class="o">*</span> <span class="n">batch_size</span>
+        <span class="c"># ending of a batch given `index`</span>
+        <span class="n">batch_end</span> <span class="o">=</span> <span class="n">batch_begin</span> <span class="o">+</span> <span class="n">batch_size</span>
+
+        <span class="n">pretrain_fns</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">rbm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rbm_layers</span><span class="p">:</span>
+
+            <span class="c"># get the cost and the updates list</span>
+            <span class="c"># using CD-k here (persisent=None) for training each RBM.</span>
+            <span class="c"># TODO: change cost function to reconstruction error</span>
+            <span class="n">cost</span><span class="p">,</span> <span class="n">updates</span> <span class="o">=</span> <span class="n">rbm</span><span class="o">.</span><span class="n">get_cost_updates</span><span class="p">(</span><span class="n">learning_rate</span><span class="p">,</span>
+                                                 <span class="n">persistent</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">)</span>
+
+            <span class="c"># compile the theano function</span>
+            <span class="n">fn</span> <span class="o">=</span> <span class="n">theano</span><span class="o">.</span><span class="n">function</span><span class="p">(</span>
+                <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">index</span><span class="p">,</span> <span class="n">theano</span><span class="o">.</span><span class="n">In</span><span class="p">(</span><span class="n">learning_rate</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)],</span>
+                <span class="n">outputs</span><span class="o">=</span><span class="n">cost</span><span class="p">,</span>
+                <span class="n">updates</span><span class="o">=</span><span class="n">updates</span><span class="p">,</span>
+                <span class="n">givens</span><span class="o">=</span><span class="p">{</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">:</span> <span class="n">train_set_x</span><span class="p">[</span><span class="n">batch_begin</span><span class="p">:</span><span class="n">batch_end</span><span class="p">]</span>
+                <span class="p">}</span>
+            <span class="p">)</span>
+            <span class="c"># append `fn` to the list of functions</span>
+            <span class="n">pretrain_fns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">pretrain_fns</span>
+</pre></div>
+</div>
+<p>Now any function <code class="docutils literal"><span class="pre">pretrain_fns[i]</span></code> takes as arguments <code class="docutils literal"><span class="pre">index</span></code> and
+optionally <code class="docutils literal"><span class="pre">lr</span></code> &#8211; the learning rate. Note that the names of the parameters
+are the names given to the Theano variables (e.g. <code class="docutils literal"><span class="pre">lr</span></code>) when they are
+constructed and not the name of the python variables (e.g. <code class="docutils literal"><span class="pre">learning_rate</span></code>). Keep
+this in mind when working with Theano. Optionally, if you provide <code class="docutils literal"><span class="pre">k</span></code> (the
+number of Gibbs steps to perform in CD or PCD) this will also become an
+argument of your function.</p>
+<p>In the same fashion, the DBN class includes a method for building the
+functions required for finetuning ( a <code class="docutils literal"><span class="pre">train_model</span></code>, a <code class="docutils literal"><span class="pre">validate_model</span></code>
+and a <code class="docutils literal"><span class="pre">test_model</span></code> function).</p>
+<div class="highlight-python"><div class="highlight"><pre>    <span class="k">def</span> <span class="nf">build_finetune_functions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">datasets</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">learning_rate</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Generates a function `train` that implements one step of</span>
+<span class="sd">        finetuning, a function `validate` that computes the error on a</span>
+<span class="sd">        batch from the validation set, and a function `test` that</span>
+<span class="sd">        computes the error on a batch from the testing set</span>
+
+<span class="sd">        :type datasets: list of pairs of theano.tensor.TensorType</span>
+<span class="sd">        :param datasets: It is a list that contain all the datasets;</span>
+<span class="sd">                        the has to contain three pairs, `train`,</span>
+<span class="sd">                        `valid`, `test` in this order, where each pair</span>
+<span class="sd">                        is formed of two Theano variables, one for the</span>
+<span class="sd">                        datapoints, the other for the labels</span>
+<span class="sd">        :type batch_size: int</span>
+<span class="sd">        :param batch_size: size of a minibatch</span>
+<span class="sd">        :type learning_rate: float</span>
+<span class="sd">        :param learning_rate: learning rate used during finetune stage</span>
+
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="p">(</span><span class="n">train_set_x</span><span class="p">,</span> <span class="n">train_set_y</span><span class="p">)</span> <span class="o">=</span> <span class="n">datasets</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="p">(</span><span class="n">valid_set_x</span><span class="p">,</span> <span class="n">valid_set_y</span><span class="p">)</span> <span class="o">=</span> <span class="n">datasets</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="p">(</span><span class="n">test_set_x</span><span class="p">,</span> <span class="n">test_set_y</span><span class="p">)</span> <span class="o">=</span> <span class="n">datasets</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="c"># compute number of minibatches for training, validation and testing</span>
+        <span class="n">n_valid_batches</span> <span class="o">=</span> <span class="n">valid_set_x</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">borrow</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">n_valid_batches</span> <span class="o">//=</span> <span class="n">batch_size</span>
+        <span class="n">n_test_batches</span> <span class="o">=</span> <span class="n">test_set_x</span><span class="o">.</span><span class="n">get_value</span><span class="p">(</span><span class="n">borrow</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">n_test_batches</span> <span class="o">//=</span> <span class="n">batch_size</span>
+
+        <span class="n">index</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">lscalar</span><span class="p">(</span><span class="s">&#39;index&#39;</span><span class="p">)</span>  <span class="c"># index to a [mini]batch</span>
+
+        <span class="c"># compute the gradients with respect to the model parameters</span>
+        <span class="n">gparams</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">grad</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">finetune_cost</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+
+        <span class="c"># compute list of fine-tuning updates</span>
+        <span class="n">updates</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">param</span><span class="p">,</span> <span class="n">gparam</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">gparams</span><span class="p">):</span>
+            <span class="n">updates</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">param</span><span class="p">,</span> <span class="n">param</span> <span class="o">-</span> <span class="n">gparam</span> <span class="o">*</span> <span class="n">learning_rate</span><span class="p">))</span>
+
+        <span class="n">train_fn</span> <span class="o">=</span> <span class="n">theano</span><span class="o">.</span><span class="n">function</span><span class="p">(</span>
+            <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">index</span><span class="p">],</span>
+            <span class="n">outputs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">finetune_cost</span><span class="p">,</span>
+            <span class="n">updates</span><span class="o">=</span><span class="n">updates</span><span class="p">,</span>
+            <span class="n">givens</span><span class="o">=</span><span class="p">{</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">:</span> <span class="n">train_set_x</span><span class="p">[</span>
+                    <span class="n">index</span> <span class="o">*</span> <span class="n">batch_size</span><span class="p">:</span> <span class="p">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">batch_size</span>
+                <span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">:</span> <span class="n">train_set_y</span><span class="p">[</span>
+                    <span class="n">index</span> <span class="o">*</span> <span class="n">batch_size</span><span class="p">:</span> <span class="p">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">batch_size</span>
+                <span class="p">]</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="n">test_score_i</span> <span class="o">=</span> <span class="n">theano</span><span class="o">.</span><span class="n">function</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">index</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="p">,</span>
+            <span class="n">givens</span><span class="o">=</span><span class="p">{</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">:</span> <span class="n">test_set_x</span><span class="p">[</span>
+                    <span class="n">index</span> <span class="o">*</span> <span class="n">batch_size</span><span class="p">:</span> <span class="p">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">batch_size</span>
+                <span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">:</span> <span class="n">test_set_y</span><span class="p">[</span>
+                    <span class="n">index</span> <span class="o">*</span> <span class="n">batch_size</span><span class="p">:</span> <span class="p">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">batch_size</span>
+                <span class="p">]</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="n">valid_score_i</span> <span class="o">=</span> <span class="n">theano</span><span class="o">.</span><span class="n">function</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">index</span><span class="p">],</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">errors</span><span class="p">,</span>
+            <span class="n">givens</span><span class="o">=</span><span class="p">{</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">:</span> <span class="n">valid_set_x</span><span class="p">[</span>
+                    <span class="n">index</span> <span class="o">*</span> <span class="n">batch_size</span><span class="p">:</span> <span class="p">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">batch_size</span>
+                <span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">:</span> <span class="n">valid_set_y</span><span class="p">[</span>
+                    <span class="n">index</span> <span class="o">*</span> <span class="n">batch_size</span><span class="p">:</span> <span class="p">(</span><span class="n">index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">batch_size</span>
+                <span class="p">]</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="c"># Create a function that scans the entire validation set</span>
+        <span class="k">def</span> <span class="nf">valid_score</span><span class="p">():</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">valid_score_i</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_valid_batches</span><span class="p">)]</span>
+
+        <span class="c"># Create a function that scans the entire test set</span>
+        <span class="k">def</span> <span class="nf">test_score</span><span class="p">():</span>
+            <span class="k">return</span> <span class="p">[</span><span class="n">test_score_i</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_test_batches</span><span class="p">)]</span>
+
+        <span class="k">return</span> <span class="n">train_fn</span><span class="p">,</span> <span class="n">valid_score</span><span class="p">,</span> <span class="n">test_score</span>
+</pre></div>
+</div>
+<p>Note that the returned <code class="docutils literal"><span class="pre">valid_score</span></code> and <code class="docutils literal"><span class="pre">test_score</span></code> are not Theano
+functions, but rather Python functions. These loop over the entire
+validation set and the entire test set to produce a list of the losses
+obtained over these sets.</p>
+</div>
+<div class="section" id="putting-it-all-together">
+<h2>Putting it all together<a class="headerlink" href="#putting-it-all-together" title="Permalink to this headline">¶</a></h2>
+<p>The few lines of code below constructs the deep belief network:</p>
+<div class="highlight-python"><div class="highlight"><pre>    <span class="n">numpy_rng</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">RandomState</span><span class="p">(</span><span class="mi">123</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;... building the model&#39;</span><span class="p">)</span>
+    <span class="c"># construct the Deep Belief Network</span>
+    <span class="n">dbn</span> <span class="o">=</span> <span class="n">DBN</span><span class="p">(</span><span class="n">numpy_rng</span><span class="o">=</span><span class="n">numpy_rng</span><span class="p">,</span> <span class="n">n_ins</span><span class="o">=</span><span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span><span class="p">,</span>
+              <span class="n">hidden_layers_sizes</span><span class="o">=</span><span class="p">[</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">1000</span><span class="p">],</span>
+              <span class="n">n_outs</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>There are two stages in training this network: (1) a layer-wise pre-training and
+(2) a fine-tuning stage.</p>
+<p>For the pre-training stage, we loop over all the layers of the network. For
+each layer, we use the compiled theano function which determines the
+input to the <code class="docutils literal"><span class="pre">i</span></code>-th level RBM and performs one step of CD-k within this RBM.
+This function is applied to the training set for a fixed number of epochs
+given by <code class="docutils literal"><span class="pre">pretraining_epochs</span></code>.</p>
+<div class="highlight-python"><div class="highlight"><pre>    <span class="c">#########################</span>
+    <span class="c"># PRETRAINING THE MODEL #</span>
+    <span class="c">#########################</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;... getting the pretraining functions&#39;</span><span class="p">)</span>
+    <span class="n">pretraining_fns</span> <span class="o">=</span> <span class="n">dbn</span><span class="o">.</span><span class="n">pretraining_functions</span><span class="p">(</span><span class="n">train_set_x</span><span class="o">=</span><span class="n">train_set_x</span><span class="p">,</span>
+                                                <span class="n">batch_size</span><span class="o">=</span><span class="n">batch_size</span><span class="p">,</span>
+                                                <span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">)</span>
+
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;... pre-training the model&#39;</span><span class="p">)</span>
+    <span class="n">start_time</span> <span class="o">=</span> <span class="n">timeit</span><span class="o">.</span><span class="n">default_timer</span><span class="p">()</span>
+    <span class="c"># Pre-train layer-wise</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dbn</span><span class="o">.</span><span class="n">n_layers</span><span class="p">):</span>
+        <span class="c"># go through pretraining epochs</span>
+        <span class="k">for</span> <span class="n">epoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">pretraining_epochs</span><span class="p">):</span>
+            <span class="c"># go through the training set</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">batch_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_train_batches</span><span class="p">):</span>
+                <span class="n">c</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pretraining_fns</span><span class="p">[</span><span class="n">i</span><span class="p">](</span><span class="n">index</span><span class="o">=</span><span class="n">batch_index</span><span class="p">,</span>
+                                            <span class="n">lr</span><span class="o">=</span><span class="n">pretrain_lr</span><span class="p">))</span>
+            <span class="k">print</span><span class="p">(</span><span class="s">&#39;Pre-training layer </span><span class="si">%i</span><span class="s">, epoch </span><span class="si">%d</span><span class="s">, cost &#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">epoch</span><span class="p">),</span> <span class="n">end</span><span class="o">=</span><span class="s">&#39; &#39;</span><span class="p">)</span>
+            <span class="k">print</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s">&#39;float64&#39;</span><span class="p">))</span>
+
+    <span class="n">end_time</span> <span class="o">=</span> <span class="n">timeit</span><span class="o">.</span><span class="n">default_timer</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The fine-tuning loop is very similar to the one in the <a class="reference internal" href="mlp.html#mlp"><span>Multilayer Perceptron</span></a> tutorial,
+the only difference being that we now use the functions given by
+<code class="docutils literal"><span class="pre">build_finetune_functions</span></code>.</p>
+</div>
+<div class="section" id="running-the-code">
+<h2>Running the Code<a class="headerlink" href="#running-the-code" title="Permalink to this headline">¶</a></h2>
+<p>The user can run the code by calling:</p>
+<div class="highlight-bash"><div class="highlight"><pre>python code/DBN.py
+</pre></div>
+</div>
+<p>With the default parameters, the code runs for 100 pre-training epochs with
+mini-batches of size 10. This corresponds to performing 500,000 unsupervised
+parameter updates. We use an unsupervised learning rate of 0.01, with a
+supervised learning rate of 0.1.  The DBN itself consists of three
+hidden layers with 1000 units per layer. With early-stopping, this configuration
+achieved a minimal validation error of 1.27 with corresponding test
+error of 1.34 after 46 supervised epochs.</p>
+<p>On an Intel(R) Xeon(R) CPU X5560 running at 2.80GHz, using a multi-threaded MKL
+library (running on 4 cores), pretraining took 615 minutes with an average of
+2.05 mins/(layer * epoch). Fine-tuning took only 101 minutes or approximately
+2.20 mins/epoch.</p>
+<p>Hyper-parameters were selected by optimizing on the validation error. We tested
+unsupervised learning rates in <span class="math">\{10^{-1}, ..., 10^{-5}\}</span> and supervised
+learning rates in <span class="math">\{10^{-1}, ..., 10^{-4}\}</span>. We did not use any form of
+regularization besides early-stopping, nor did we optimize over the number of
+pretraining updates.</p>
+</div>
+<div class="section" id="tips-and-tricks">
+<h2>Tips and Tricks<a class="headerlink" href="#tips-and-tricks" title="Permalink to this headline">¶</a></h2>
+<p>One way to improve the running time of your code (given that you have
+sufficient memory available), is to compute the representation of the entire
+dataset at layer <code class="docutils literal"><span class="pre">i</span></code> in a single pass, once the weights of the
+<span class="math">i-1</span>-th layers have been fixed. Namely, start by training your first
+layer RBM. Once it is trained, you can compute the hidden units values for
+every example in the dataset and store this as a new dataset which is used to
+train the 2nd layer RBM. Once you trained the RBM for layer 2, you compute, in
+a similar fashion, the dataset for layer 3 and so on. This avoids calculating
+the intermediate (hidden layer) representations, <code class="docutils literal"><span class="pre">pretraining_epochs</span></code> times
+at the expense of increased memory usage.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="hmc.html" title="Hybrid Monte-Carlo Sampling"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="rbm.html" title="Restricted Boltzmann Machines (RBM)"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">DeepLearning 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2008--2010, LISA lab.
+      Last updated on Feb 01, 2020.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+<script type="text/javascript">
+  (function() {
+    var ga = document.createElement('script');
+    ga.src = ('https:' == document.location.protocol ?
+              'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    ga.setAttribute('async', 'true');
+    document.documentElement.firstChild.appendChild(ga);
+  })();
+</script>
+
+  </body>
+</html>
