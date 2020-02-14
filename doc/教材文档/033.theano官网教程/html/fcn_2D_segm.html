@@ -1,0 +1,447 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Fully Convolutional Networks (FCN) for 2D segmentation &mdash; DeepLearning 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="DeepLearning 0.1 documentation" href="contents.html" />
+    <link rel="next" title="Network for 1D segmentation" href="cnn_1D_segm.html" />
+    <link rel="prev" title="References" href="references.html" />
+ 
+<script type="text/javascript">
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-168290-9']);
+  _gaq.push(['_trackPageview']);
+</script>
+
+  </head>
+  <body role="document">
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="cnn_1D_segm.html" title="Network for 1D segmentation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="references.html" title="References"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">DeepLearning 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="contents.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Fully Convolutional Networks (FCN) for 2D segmentation</a><ul>
+<li><a class="reference internal" href="#summary">Summary</a></li>
+<li><a class="reference internal" href="#data">Data</a></li>
+<li><a class="reference internal" href="#model">Model</a><ul>
+<li><a class="reference internal" href="#metrics">Metrics</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#code">Code</a></li>
+<li><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="references.html"
+                        title="previous chapter">References</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="cnn_1D_segm.html"
+                        title="next chapter">Network for 1D segmentation</a></p>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/fcn_2D_segm.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="fully-convolutional-networks-fcn-for-2d-segmentation">
+<span id="fcn-2d-segm"></span><h1>Fully Convolutional Networks (FCN) for 2D segmentation<a class="headerlink" href="#fully-convolutional-networks-fcn-for-2d-segmentation" title="Permalink to this headline">¶</a></h1>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This section assumes the reader has already read through <a class="reference internal" href="lenet.html"><em>Convolutional Neural Networks (LeNet)</em></a> for
+convolutional networks motivation.</p>
+</div>
+<div class="section" id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<p>Segmentation task is different from classification task because it requires predicting
+a class for each pixel of the input image, instead of only 1 class for the whole input.
+Classification needs to understand <em>what</em> is in the input (namely, the context). However,
+in order to predict what is in the input for each pixel, segmentation needs to recover
+not only <em>what</em> is in the input, but also <em>where</em>.</p>
+<div class="figure align-center" id="id1">
+<a class="reference internal image-reference" href="_images/cat_segmentation.png"><img alt="_images/cat_segmentation.png" src="_images/cat_segmentation.png" style="width: 532.0px; height: 271.25px;" /></a>
+<p class="caption"><span class="caption-text"><strong>Figure 1</strong> : Segmentation network (from FCN paper)</span></p>
+</div>
+<p><strong>Fully Convolutional Networks</strong> (FCNs) owe their name to their architecture, which is
+built only from locally connected layers, such as convolution, pooling and upsampling.
+Note that no dense layer is used in this kind of architecture. This reduces the number
+of parameters and computation time. Also, the network can work regardless of the original
+image size, without requiring any fixed number of units at any stage, givent that all
+connections are local. To obtain a segmentation map (output), segmentation
+networks usually have 2 parts :</p>
+<ul class="simple">
+<li>Downsampling path : capture semantic/contextual information</li>
+<li>Upsampling path : recover spatial information</li>
+</ul>
+<p>The <strong>downsampling path</strong> is used to extract and interpret the context (<em>what</em>), while the
+<strong>upsampling path</strong> is used to enable precise localization (<em>where</em>). Furthermore, to fully
+recover the fine-grained spatial information lost in the pooling or downsampling layers, we
+often use skip connections.</p>
+<p>A skip connection is a connection that bypasses at least one layer. Here, it
+is often used to transfer local information by concatenating or summing feature
+maps from the downsampling path with feature maps from the upsampling path. Merging features
+from various resolution levels helps combining context information with spatial information.</p>
+</div>
+<div class="section" id="data">
+<h2>Data<a class="headerlink" href="#data" title="Permalink to this headline">¶</a></h2>
+<p>The polyps dataset can be found <a class="reference external" href="https://drive.google.com/file/d/0B_60jvsCt1hhZWNfcW4wbHE5N3M/view">here</a>.
+There is a total of 912 images taken from 36 patients.</p>
+<ul class="simple">
+<li>Training set : 20 patients and 547 frames</li>
+<li>Validation set : 8 patients and 183 frames</li>
+<li>Test set : 8 patients and 182 frames</li>
+</ul>
+<p>Each pixel is labelled between 2 classes : polype or background.
+The size of the images vary. We use data augmentation for training, as specified
+in the default arguments in the code given below. Note that
+the data augmentation is necessary for training with batch size greater than 1
+in order to have same image size with a random cropping. If no random cropping,
+the batch size for the training set must be set to 1, like for validation and test
+sets (where there is no data augmentation).</p>
+<p>In each of the training, validation and test directory, the input images are in the
+<code class="docutils literal"><span class="pre">/images</span></code> directory and the polyps masks (segmentation maps) are in <code class="docutils literal"><span class="pre">/masks2</span></code>. The
+segmentation maps in the <code class="docutils literal"><span class="pre">/masks2</span></code> directory indicate the presence or absence
+of polyps for each pixel. The other subdirectories (<code class="docutils literal"><span class="pre">/masks3</span></code> and <code class="docutils literal"><span class="pre">/masks4</span></code>) are,
+respectively, for a segmentation task with 3 and 4 classes, but will not be
+presented here.</p>
+</div>
+<div class="section" id="model">
+<h2>Model<a class="headerlink" href="#model" title="Permalink to this headline">¶</a></h2>
+<p>There are variants of the FCN architecture, which mainly differ in the spatial precision of
+their output. For example, the figures below show the FCN-32, FCN-16 and FCN-8 variants. In the
+figures, convolutional layers are represented as vertical lines between pooling layers, which
+explicitely show the relative size of the feature maps.</p>
+<div class="figure align-center" id="id2">
+<a class="reference internal image-reference" href="_images/fcn.png"><img alt="_images/fcn.png" src="_images/fcn.png" style="width: 687.5px; height: 297.0px;" /></a>
+<p class="caption"><span class="caption-text"><strong>Figure 2</strong> : FCN architecture (from FCN paper)</span></p>
+</div>
+<p><strong>Difference between the 3 FCN variants</strong></p>
+<p>As shown below, these 3 different architectures differ in the stride of the last convolution,
+and the skip connections used to obtain the output segmentation maps. We will use the term
+<em>downsampling path</em> to refer to the network up to <em>conv7</em> layer and we will use the term
+<em>upsampling path</em> to refer to the network composed of all layers after <em>conv7</em>. It is worth
+noting that the 3 FCN architectures share the same downsampling path, but differ in their
+respective upsampling paths.</p>
+<p>1. <strong>FCN-32</strong> : Directly produces the segmentation map from <em>conv7</em>, by using a
+transposed convolution layer with stride 32.</p>
+<p>2. <strong>FCN-16</strong> : Sums the 2x upsampled prediction from <em>conv7</em>
+(using a transposed convolution with stride 2) with <em>pool4</em> and then
+produces the segmentation map, by using a transposed convolution layer with stride 16
+on top of that.</p>
+<p>3. <strong>FCN-8</strong> : Sums the 2x upsampled <em>conv7</em> (with a stride 2 transposed convolution)
+with <em>pool4</em>, upsamples them with a stride 2 transposed convolution and sums them
+with <em>pool3</em>, and applies a transposed convolution layer with stride 8 on the resulting
+feature maps to obtain the segmentation map.</p>
+<div class="figure align-center" id="id3">
+<a class="reference internal image-reference" href="_images/fcn_schema.png"><img alt="_images/fcn_schema.png" src="_images/fcn_schema.png" style="width: 896.35px; height: 204.75px;" /></a>
+<p class="caption"><span class="caption-text"><strong>Figure 3</strong> : FCN architecture (from FCN paper)</span></p>
+</div>
+<p>As explained above, the upsampling paths of the FCN variants are different, since they
+use different skip connection layers and strides for the last convolution, yielding
+different segmentations, as shown in Figure 4. Combining layers that have different
+precision helps retrieving fine-grained spatial information, as well as coarse
+contextual information.</p>
+<div class="figure align-center" id="id4">
+<a class="reference internal image-reference" href="_images/fcn32_16_8.png"><img alt="_images/fcn32_16_8.png" src="_images/fcn32_16_8.png" style="width: 359.09999999999997px; height: 147.9px;" /></a>
+<p class="caption"><span class="caption-text"><strong>Figure 4</strong> : FCN results (from FCN paper)</span></p>
+</div>
+<p>Note that the FCN-8 architecture was used on the polyps dataset below,
+since it produces more precise segmentation maps.</p>
+<div class="section" id="metrics">
+<h3>Metrics<a class="headerlink" href="#metrics" title="Permalink to this headline">¶</a></h3>
+<p><strong>Per pixel accuracy</strong></p>
+<p>This metric is self explanatory, since it outputs the class prediction accuracy
+per pixel.</p>
+<div class="math" id="equation-jaccard">
+<p><span class="eqno">(1)</span><span class="math">acc(P, GT) = \frac{|\text{pixels correctly predicted}|}{|\text{total nb of pixels}|}</span></p>
+</div><p><strong>Jaccard (Intersection over Union)</strong></p>
+<p>This evaluation metric is often used for image segmentation, since it is more structured.
+The jaccard is a per class evaluation metric, which computes the number of pixels in
+the intersection between the
+predicted and ground truth segmentation maps for a given class, divided by the
+number of pixels in the union between those two segmentation maps,
+also for that given class.</p>
+<div class="math" id="equation-jaccard_equation">
+<p><span class="eqno">(2)</span><span class="math">jacc(P(class), GT(class)) = \frac{|P(class)\cap GT(class)|}{|P(class)\cup GT(class)|}</span></p>
+</div><p>where <span class="math">P</span> is the predicted segmentation map and <span class="math">GT</span> is the ground
+truth segmentation map. <span class="math">P(class)</span> is then the binary mask indicating if each
+pixel is predicted as <em>class</em> or not. In general, the closer to 1, the better.</p>
+<div class="figure align-center" id="id5">
+<a class="reference internal image-reference" href="_images/jaccard.png"><img alt="_images/jaccard.png" src="_images/jaccard.png" style="width: 240.0px; height: 187.20000000000002px;" /></a>
+<p class="caption"><span class="caption-text"><strong>Figure 5</strong> : Jaccard visualisation (from this <a class="reference external" href="http://www.pyimagesearch.com/2016/11/07/intersection-over-union-iou-for-object-detection/">website</a>)</span></p>
+</div>
+</div>
+</div>
+<div class="section" id="code">
+<h2>Code<a class="headerlink" href="#code" title="Permalink to this headline">¶</a></h2>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<ul class="last simple">
+<li>Current code works with Python 2 only.</li>
+<li>If you use Theano with GPU backend (e.g. with Theano flag <code class="docutils literal"><span class="pre">device=cuda</span></code>),
+you will need at least 12GB free in your video RAM.</li>
+</ul>
+</div>
+<p>The FCN-8 implementation can be found in the following files:</p>
+<ul class="simple">
+<li><a class="reference external" href="../code/fcn_2D_segm/fcn8.py">fcn8.py</a>  : Defines the model.</li>
+<li><a class="reference external" href="../code/fcn_2D_segm/train_fcn8.py">train_fcn8.py</a> : Training loop (main script to use).</li>
+</ul>
+<p>The user must install <a class="reference external" href="http://lasagne.readthedocs.io/en/latest/user/installation.html">Lasagne</a> ,
+and clone the GitHub repo <a class="reference external" href="https://github.com/fvisin/dataset_loaders">Dataset Loaders</a>.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="c">## Installation of dataset_loaders.</span>
+
+<span class="c"># dataset_loaders depends on Python modules matplotlib, numpy, scipy, Pillow, scikit-image, seaborn, and h5py.</span>
+<span class="c"># They can all be installed via conda.</span>
+conda install matplotlib numpy Pillow scipy scikit-image seaborn h5py
+
+git clone https://github.com/fvisin/dataset_loaders.git
+
+<span class="nb">cd </span>dataset_loaders/
+
+pip install -e .
+</pre></div>
+</div>
+<p>Change the <code class="docutils literal"><span class="pre">dataset_loaders/config.ini</span></code> file and add the right path for the dataset:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span class="c">## Into `dataset_loaders` git folder.</span>
+
+<span class="c"># If ``config.ini`` does not yet exit, create it:</span>
+<span class="nb">cd </span>dataset_loaders
+touch config.ini
+
+<span class="c"># ``config.ini`` must have at least the section ``[general]`` which indicates a work directory.</span>
+</pre></div>
+</div>
+<div class="highlight-cfg"><div class="highlight"><pre><span class="k">[general]</span>
+<span class="na">datasets_local_path</span> <span class="o">=</span> <span class="s">/the/local/path/where/the/datasets/will/be/copied</span>
+
+<span class="k">[polyps912]</span>
+<span class="na">shared_path</span> <span class="o">=</span> <span class="s">/path/to/DeepLearningTutorials/data/polyps_split7/</span>
+</pre></div>
+</div>
+<p>Folder indicated at section <code class="docutils literal"><span class="pre">[polyps912]</span></code> should be the unzipped dataset archive <code class="docutils literal"><span class="pre">polyps_split7.zip</span></code>, with sub-folders:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">test</span></code>,</li>
+<li><code class="docutils literal"><span class="pre">train</span></code></li>
+<li><code class="docutils literal"><span class="pre">valid</span></code></li>
+</ul>
+<p>We used Lasagne layers, as you can see in the code below.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">buildFCN8</span><span class="p">(</span><span class="n">nb_in_channels</span><span class="p">,</span> <span class="n">input_var</span><span class="p">,</span>
+              <span class="n">path_weights</span><span class="o">=</span><span class="s">&#39;/Tmp/romerosa/itinf/models/&#39;</span> <span class="o">+</span>
+              <span class="s">&#39;camvid/new_fcn8_model_best.npz&#39;</span><span class="p">,</span>
+              <span class="n">n_classes</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span> <span class="n">load_weights</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+              <span class="n">void_labels</span><span class="o">=</span><span class="p">[],</span> <span class="n">trainable</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+              <span class="n">layer</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;probs_dimshuffle&#39;</span><span class="p">],</span> <span class="n">pascal</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+              <span class="n">temperature</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">dropout</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Build fcn8 model</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">net</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c"># Contracting path</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;input&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">InputLayer</span><span class="p">((</span><span class="bp">None</span><span class="p">,</span> <span class="n">nb_in_channels</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span><span class="n">input_var</span><span class="p">)</span>
+
+    <span class="c"># pool 1</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;conv1_1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;input&#39;</span><span class="p">],</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;conv1_2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;conv1_1&#39;</span><span class="p">],</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;same&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;pool1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">PoolLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;conv1_2&#39;</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="c"># pool 2</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;conv2_1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;pool1&#39;</span><span class="p">],</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;same&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;conv2_2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;conv2_1&#39;</span><span class="p">],</span> <span class="mi">128</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;same&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;pool2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">PoolLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;conv2_2&#39;</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="c"># pool 3</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;conv3_1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;pool2&#39;</span><span class="p">],</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;same&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;conv3_2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;conv3_1&#39;</span><span class="p">],</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;same&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;conv3_3&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;conv3_2&#39;</span><span class="p">],</span> <span class="mi">256</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;same&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;pool3&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">PoolLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;conv3_3&#39;</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="c"># pool 4</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;conv4_1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;pool3&#39;</span><span class="p">],</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;same&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;conv4_2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;conv4_1&#39;</span><span class="p">],</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;same&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;conv4_3&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;conv4_2&#39;</span><span class="p">],</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;same&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;pool4&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">PoolLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;conv4_3&#39;</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="c"># pool 5</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;conv5_1&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;pool4&#39;</span><span class="p">],</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;same&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;conv5_2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;conv5_1&#39;</span><span class="p">],</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;same&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;conv5_3&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;conv5_2&#39;</span><span class="p">],</span> <span class="mi">512</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;same&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;pool5&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">PoolLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;conv5_3&#39;</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="c"># fc6</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;fc6&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;pool5&#39;</span><span class="p">],</span> <span class="mi">4096</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;valid&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;fc6_dropout&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DropoutLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;fc6&#39;</span><span class="p">],</span> <span class="n">p</span><span class="o">=</span><span class="n">dropout</span><span class="p">)</span>
+
+    <span class="c"># fc7</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;fc7&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;fc6_dropout&#39;</span><span class="p">],</span> <span class="mi">4096</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;valid&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;fc7_dropout&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DropoutLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;fc7&#39;</span><span class="p">],</span> <span class="n">p</span><span class="o">=</span><span class="n">dropout</span><span class="p">)</span>
+
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;score_fr&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;fc7_dropout&#39;</span><span class="p">],</span> <span class="n">n_classes</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="s">&#39;valid&#39;</span><span class="p">,</span> <span class="n">flip_filters</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+    <span class="c"># Upsampling path</span>
+
+    <span class="c"># Unpool</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;score2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DeconvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;score_fr&#39;</span><span class="p">],</span> <span class="n">n_classes</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span>
+                                <span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">crop</span><span class="o">=</span><span class="s">&#39;valid&#39;</span><span class="p">,</span> <span class="n">nonlinearity</span><span class="o">=</span><span class="n">linear</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;score_pool4&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;pool4&#39;</span><span class="p">],</span> <span class="n">n_classes</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span><span class="n">pad</span><span class="o">=</span><span class="s">&#39;same&#39;</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;score_fused&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ElemwiseSumLayer</span><span class="p">((</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;score2&#39;</span><span class="p">],</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;score_pool4&#39;</span><span class="p">]),</span>
+                                <span class="n">cropping</span><span class="o">=</span><span class="p">[</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="s">&#39;center&#39;</span><span class="p">,</span><span class="s">&#39;center&#39;</span><span class="p">])</span>
+
+    <span class="c"># Unpool</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;score4&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DeconvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;score_fused&#39;</span><span class="p">],</span> <span class="n">n_classes</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span>
+                                <span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">crop</span><span class="o">=</span><span class="s">&#39;valid&#39;</span><span class="p">,</span> <span class="n">nonlinearity</span><span class="o">=</span><span class="n">linear</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;score_pool3&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ConvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;pool3&#39;</span><span class="p">],</span> <span class="n">n_classes</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span><span class="n">pad</span><span class="o">=</span><span class="s">&#39;valid&#39;</span><span class="p">)</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;score_final&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ElemwiseSumLayer</span><span class="p">((</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;score4&#39;</span><span class="p">],</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;score_pool3&#39;</span><span class="p">]),</span>
+                                <span class="n">cropping</span><span class="o">=</span><span class="p">[</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="s">&#39;center&#39;</span><span class="p">,</span><span class="s">&#39;center&#39;</span><span class="p">])</span>
+    <span class="c"># Unpool</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;upsample&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DeconvLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;score_final&#39;</span><span class="p">],</span> <span class="n">n_classes</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span>
+                                <span class="n">stride</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">crop</span><span class="o">=</span><span class="s">&#39;valid&#39;</span><span class="p">,</span> <span class="n">nonlinearity</span><span class="o">=</span><span class="n">linear</span><span class="p">)</span>
+    <span class="n">upsample_shape</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">get_output_shape</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;upsample&#39;</span><span class="p">])[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;input_tmp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">InputLayer</span><span class="p">((</span><span class="bp">None</span><span class="p">,</span> <span class="n">upsample_shape</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">),</span> <span class="n">input_var</span><span class="p">)</span>
+
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;score&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ElemwiseMergeLayer</span><span class="p">((</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;input_tmp&#39;</span><span class="p">],</span> <span class="n">net</span><span class="p">[</span><span class="s">&#39;upsample&#39;</span><span class="p">]),</span>
+                                      <span class="n">merge_function</span><span class="o">=</span><span class="k">lambda</span> <span class="nb">input</span><span class="p">,</span> <span class="n">deconv</span><span class="p">:</span>
+                                      <span class="n">deconv</span><span class="p">,</span>
+                                      <span class="n">cropping</span><span class="o">=</span><span class="p">[</span><span class="bp">None</span><span class="p">,</span> <span class="bp">None</span><span class="p">,</span> <span class="s">&#39;center&#39;</span><span class="p">,</span>
+                                                <span class="s">&#39;center&#39;</span><span class="p">])</span>
+
+    <span class="c"># Final dimshuffle, reshape and softmax</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;final_dimshuffle&#39;</span><span class="p">]</span> <span class="o">=</span> \
+        <span class="n">lasagne</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">DimshuffleLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;score&#39;</span><span class="p">],</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+    <span class="n">laySize</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;final_dimshuffle&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">shape</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;final_reshape&#39;</span><span class="p">]</span> <span class="o">=</span> \
+        <span class="n">lasagne</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">ReshapeLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;final_dimshuffle&#39;</span><span class="p">],</span>
+                                    <span class="p">(</span><span class="n">T</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">laySize</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">3</span><span class="p">]),</span>
+                                     <span class="n">laySize</span><span class="p">[</span><span class="mi">3</span><span class="p">]))</span>
+    <span class="n">net</span><span class="p">[</span><span class="s">&#39;probs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">NonlinearityLayer</span><span class="p">(</span><span class="n">net</span><span class="p">[</span><span class="s">&#39;final_reshape&#39;</span><span class="p">],</span>
+                                                    <span class="n">nonlinearity</span><span class="o">=</span><span class="n">softmax</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Running <code class="docutils literal"><span class="pre">train_fcn8.py</span></code> on a Titan X lasted for around 3.5 hours, ending with the following:</p>
+<div class="highlight-text"><div class="highlight"><pre>$ THEANO_FLAGS=device=cuda0,floatX=float32,dnn.conv.algo_fwd=time_on_shape_change,dnn.conv.algo_bwd_filter=time_on_shape_change,dnn.conv.algo_bwd_data=time_on_shape_change python train_fcn8.py
+[...]
+EPOCH 221: Avg epoch training cost train 0.031036, cost val 0.313757, acc val 0.954686, jacc val class 0 0.952469, jacc val class 1 0.335233, jacc val 0.643851 took 56.401966 s
+FINAL MODEL: err test  0.473100, acc test 0.924871, jacc test class 0  0.941239, jacc test class 1 0.426777, jacc test 0.684008
+</pre></div>
+</div>
+<p>There is some variability in the training process. Another run of the same command gave the following after 6.5 hours:</p>
+<div class="highlight-text"><div class="highlight"><pre>EPOCH 344: Avg epoch training cost train 0.089571, cost val 0.272069, acc val 0.923673, jacc val class 0 0.926739, jacc val class 1 0.204083, jacc val 0.565411 took 56.540339 s
+FINAL MODEL: err test  0.541459, acc test 0.846444, jacc test class 0  0.875290, jacc test class 1 0.186454, jacc test 0.530872
+</pre></div>
+</div>
+</div>
+<div class="section" id="references">
+<h2>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h2>
+<p>If you use this tutorial, please cite the following papers.</p>
+<ul class="simple">
+<li><a class="reference external" href="https://people.eecs.berkeley.edu/~jonlong/long_shelhamer_fcn.pdf">[pdf]</a> Long, J., Shelhamer, E., Darrell, T. Fully Convolutional Networks for Semantic Segmentation. 2014.</li>
+<li><a class="reference external" href="https://arxiv.org/pdf/1612.00799.pdf">[pdf]</a> David Vázquez, Jorge Bernal, F. Javier Sánchez, Gloria Fernández-Esparrach, Antonio M. López, Adriana Romero, Michal Drozdzal, Aaron Courville. A Benchmark for Endoluminal Scene Segmentation of Colonoscopy Images. (2016).</li>
+<li><a class="reference external" href="https://github.com/fvisin/dataset_loaders">[GitHub Repo]</a> Francesco Visin, Adriana Romero - Dataset loaders: a python library to load and preprocess datasets. 2017.</li>
+</ul>
+<p>Papers related to Theano/Lasagne:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://arxiv.org/pdf/1605.02688.pdf">[pdf]</a> Theano Development Team. Theano: A Python framework for fast computation of mathematical expresssions. May 2016.</li>
+<li><a class="reference external" href="https://zenodo.org/record/27878#.WQocDrw18yc">[website]</a> Sander Dieleman, Jan Schluter, Colin Raffel, Eben Olson, Søren Kaae Sønderby, Daniel Nouri, Daniel Maturana, Martin Thoma, Eric Battenberg, Jack Kelly, Jeffrey De Fauw, Michael Heilman, diogo149, Brian McFee, Hendrik Weideman, takacsg84, peterderivaz, Jon, instagibbs, Dr. Kashif Rasul, CongLiu, Britefury, and Jonas Degrave, “Lasagne: First release.” (2015).</li>
+</ul>
+<p>Thank you!</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="cnn_1D_segm.html" title="Network for 1D segmentation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="references.html" title="References"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">DeepLearning 0.1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &copy; Copyright 2008--2010, LISA lab.
+      Last updated on Feb 01, 2020.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.3.1.
+    </div>
+<script type="text/javascript">
+  (function() {
+    var ga = document.createElement('script');
+    ga.src = ('https:' == document.location.protocol ?
+              'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    ga.setAttribute('async', 'true');
+    document.documentElement.firstChild.appendChild(ga);
+  })();
+</script>
+
+  </body>
+</html>
